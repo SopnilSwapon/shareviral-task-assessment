@@ -1,25 +1,24 @@
-import React from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
+import { Controller, useForm } from 'react-hook-form';
 import {
-  View,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
+  FlatList,
   Keyboard,
   Platform,
   Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useQueryClient } from '@tanstack/react-query';
-import { Ionicons } from '@expo/vector-icons';
-import { useForm, Controller } from 'react-hook-form';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAppQuery } from '../../hooks/useAppQuery';
-import { useAppMutation } from '../../hooks/useAppMutation';
-import { QK_CATEGORIES } from '../../hooks/queryKeys';
-import { Category, CreateCategoryInput } from '../../types';
 import { OfflineBanner } from '../../components/OfflineBanner';
+import { QK_CATEGORIES } from '../../hooks/queryKeys';
+import { useAppMutation } from '../../hooks/useAppMutation';
+import { useAppQuery } from '../../hooks/useAppQuery';
+import { Category, CreateCategoryInput } from '../../types';
 import { getCategoryColor } from '../../utils/colors';
 
 type TCategoryFormValues = {

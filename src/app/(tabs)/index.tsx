@@ -2,14 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigation } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -18,24 +14,23 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CreateTaskModal } from '../../components/CreateTaskModal';
 import { OfflineBanner } from '../../components/OfflineBanner';
+import { SortModal } from '../../components/SortModal';
+import { SyncStatusHeader } from '../../components/SyncStatusHeader';
 import { TaskItem } from '../../components/TaskItem';
+
 import { QK_CATEGORIES, QK_TASKS } from '../../hooks/queryKeys';
 import { useAppMutation } from '../../hooks/useAppMutation';
 import { useAppQuery } from '../../hooks/useAppQuery';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useFilteredSortedTasks } from '../../hooks/useFilteredSortedTasks';
+
 import { useAppStore } from '../../store/useAppStore';
-import { Category, CreateTaskInput, Task } from '../../types';
+import { Category, CreateTaskInput, Task, TaskWithStarred } from '../../types';
+
 import { getCategoryColor } from '../../utils/colors';
 import { mergeRemoteWithLocalStarred } from '../../utils/merge';
-
-type TTaskFormValues = {
-  title: string;
-  description: string;
-  category_id: string | null;
-  due_date: string;
-};
 
 export default function TasksScreen() {
   const queryClient = useQueryClient();
@@ -45,25 +40,6 @@ export default function TasksScreen() {
   const [localSearch, setLocalSearch] = useState('');
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isSortModalVisible, setIsSortModalVisible] = useState(false);
-
-  // React Hook Form
-  const {
-    control,
-    handleSubmit,
-    reset,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<TTaskFormValues>({
-    defaultValues: {
-      title: '',
-      description: '',
-      category_id: null,
-      due_date: '',
-    },
-  });
-
-  const selectedCategoryId = watch('category_id');
 
   // Zustand Store state
   const {
@@ -97,13 +73,14 @@ export default function TasksScreen() {
     url: '/categories?select=*&order=name.asc',
   });
 
+  // Supply 3 generic arguments to useAppQuery: TQueryFnData, TError, TData
   const {
     data: tasks = [],
     isLoading,
     isFetching,
     isError,
     refetch,
-  } = useAppQuery<Task[]>({
+  } = useAppQuery<Task[], unknown, TaskWithStarred[]>({
     queryKey: [QK_TASKS],
     url: '/tasks?select=*&order=created_at.desc',
     select: (data) => mergeRemoteWithLocalStarred(data, starredTaskIds),
@@ -164,7 +141,6 @@ export default function TasksScreen() {
       queryClient.setQueryData<Task[]>([QK_TASKS], (old) =>
         old ? [response.data, ...old] : [response.data]
       );
-      reset();
       setIsCreateModalVisible(false);
     },
     onError: (err: any) => {
@@ -180,7 +156,12 @@ export default function TasksScreen() {
     toggleStarredTask(id);
   };
 
-  const onSubmit = (values: TTaskFormValues) => {
+  const handleCreateSubmit = (values: {
+    title: string;
+    description: string;
+    category_id: string | null;
+    due_date: string;
+  }) => {
     const payload: CreateTaskInput = {
       title: values.title.trim(),
       description: values.description.trim() || undefined,
@@ -211,21 +192,12 @@ export default function TasksScreen() {
       <OfflineBanner />
 
       {/* Header Info Panel */}
-      <View className="flex-row items-center justify-between px-4 py-2 border-b border-gray-100">
-        <View className="flex-row items-center gap-1.5">
-          <Ionicons
-            name={isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'}
-            size={16}
-            color={isOnline ? '#10b981' : '#f59e0b'}
-          />
-          <Text className="text-xs text-gray-500">
-            {getSyncStatusText()}
-          </Text>
-        </View>
-        {(isFetching || isLoading) && (
-          <ActivityIndicator size="small" color="#000000" className="mr-1" />
-        )}
-      </View>
+      <SyncStatusHeader
+        isOnline={isOnline}
+        syncStatusText={getSyncStatusText()}
+        isFetching={isFetching}
+        isLoading={isLoading}
+      />
 
       {/* Filter / Search section */}
       <View className="pt-2 pb-1">
@@ -389,225 +361,29 @@ export default function TasksScreen() {
       {/* Floating Action Button */}
       <TouchableOpacity
         className="absolute right-6 bottom-6 w-14 h-14 rounded-full justify-center items-center bg-black shadow-lg"
-        onPress={() => {
-          reset();
-          setIsCreateModalVisible(true);
-        }}
+        onPress={() => setIsCreateModalVisible(true)}
       >
         <Ionicons name="add" size={28} color="#ffffff" />
       </TouchableOpacity>
 
       {/* Sort Options Modal */}
-      <Modal
+      <SortModal
         visible={isSortModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsSortModalVisible(false)}
-      >
-        <TouchableOpacity
-          className="flex-1 bg-black/40 justify-end"
-          activeOpacity={1}
-          onPress={() => setIsSortModalVisible(false)}
-        >
-          <View className="bg-white rounded-t-2xl p-6 pb-8">
-            <Text className="text-lg font-bold mb-4 text-black">Sort Tasks By</Text>
-
-            <View className="h-[1px] bg-gray-200 my-2" />
-
-            {/* Sort field options */}
-            {(
-              [
-                { label: 'Created Date', value: 'created_at' },
-                { label: 'Due Date', value: 'due_date' },
-                { label: 'Title', value: 'title' },
-              ] as const
-            ).map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                className="flex-row justify-between items-center py-3"
-                onPress={() => setSortBy(option.value)}
-              >
-                <Text
-                  className={`text-base ${
-                    sortBy === option.value ? 'text-emerald-500 font-bold' : 'text-gray-500'
-                  }`}
-                >
-                  {option.label}
-                </Text>
-                {sortBy === option.value && (
-                  <Ionicons name="checkmark" size={18} color="#10b981" />
-                )}
-              </TouchableOpacity>
-            ))}
-
-            <View className="h-[1px] bg-gray-200 my-2" />
-
-            <Text className="text-sm font-bold text-gray-400 mt-2 mb-1">Order</Text>
-
-            {/* Sort order options */}
-            {(
-              [
-                { label: 'Ascending', value: 'asc' },
-                { label: 'Descending', value: 'desc' },
-              ] as const
-            ).map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                className="flex-row justify-between items-center py-3"
-                onPress={() => setSortOrder(option.value)}
-              >
-                <Text
-                  className={`text-base ${
-                    sortOrder === option.value ? 'text-emerald-500 font-bold' : 'text-gray-500'
-                  }`}
-                >
-                  {option.label}
-                </Text>
-                {sortOrder === option.value && (
-                  <Ionicons name="checkmark" size={18} color="#10b981" />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setIsSortModalVisible(false)}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSelectSortBy={setSortBy}
+        onSelectSortOrder={setSortOrder}
+      />
 
       {/* Create Task Modal */}
-      <Modal
+      <CreateTaskModal
         visible={isCreateModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setIsCreateModalVisible(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          className="flex-1 bg-white"
-        >
-          <View className="flex-row justify-between items-center px-4 py-4 border-b border-gray-200">
-            <TouchableOpacity onPress={() => setIsCreateModalVisible(false)}>
-              <Text className="text-red-500 text-base">Cancel</Text>
-            </TouchableOpacity>
-            <Text className="text-lg font-bold text-black">New Task</Text>
-            <TouchableOpacity onPress={handleSubmit(onSubmit)}>
-              <Text className="text-emerald-500 text-base font-bold">Save</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
-            <View className="gap-1">
-              <Text className="text-sm font-bold text-black">Title *</Text>
-              <Controller
-                control={control}
-                name="title"
-                rules={{
-                  required: 'Task title is required',
-                  validate: (value) => value.trim().length > 0 || 'Task title is required',
-                }}
-                render={({ field: { onChange, value, onBlur } }) => (
-                  <TextInput
-                    placeholder="Enter task title"
-                    placeholderTextColor="#9ca3af"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    className={`h-11 rounded-lg px-3 text-base text-black bg-gray-100 border ${
-                      errors.title ? 'border-red-500' : 'border-transparent'
-                    }`}
-                  />
-                )}
-              />
-              {errors.title && (
-                <Text className="text-red-500 text-xs pl-1">
-                  {errors.title.message}
-                </Text>
-              )}
-            </View>
-
-            <View className="gap-1">
-              <Text className="text-sm font-bold text-black">Description</Text>
-              <Controller
-                control={control}
-                name="description"
-                render={({ field: { onChange, value, onBlur } }) => (
-                  <TextInput
-                    placeholder="Enter description"
-                    placeholderTextColor="#9ca3af"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    multiline
-                    numberOfLines={3}
-                    className="h-24 rounded-lg px-3 py-2 text-base text-black bg-gray-100 border border-transparent"
-                    style={{ textAlignVertical: 'top' }}
-                  />
-                )}
-              />
-            </View>
-
-            <View className="gap-1">
-              <Text className="text-sm font-bold text-black">Category</Text>
-              <View className="flex-row flex-wrap gap-2 py-1">
-                <TouchableOpacity
-                  style={{ backgroundColor: selectedCategoryId === null ? '#000000' : '#f3f4f6' }}
-                  className="px-4 py-2 rounded-lg"
-                  onPress={() => setValue('category_id', null)}
-                >
-                  <Text
-                    className={`text-[13px] font-semibold ${
-                      selectedCategoryId === null ? 'text-white' : 'text-black'
-                    }`}
-                  >
-                    None
-                  </Text>
-                </TouchableOpacity>
-
-                {categories.map((cat) => {
-                  const isSel = selectedCategoryId === cat.id;
-                  const catColor = getCategoryColor(cat.name);
-                  return (
-                    <TouchableOpacity
-                      key={cat.id}
-                      style={{
-                        borderLeftColor: catColor,
-                        borderLeftWidth: 3,
-                        backgroundColor: isSel ? catColor : '#f3f4f6',
-                      }}
-                      className="px-4 py-2 rounded-lg"
-                      onPress={() => setValue('category_id', isSel ? null : cat.id)}
-                    >
-                      <Text
-                        className={`text-[13px] font-semibold ${
-                          isSel ? 'text-white font-bold' : 'text-black'
-                        }`}
-                      >
-                        {cat.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View className="gap-1">
-              <Text className="text-sm font-bold text-black">Due Date (YYYY-MM-DD)</Text>
-              <Controller
-                control={control}
-                name="due_date"
-                render={({ field: { onChange, value, onBlur } }) => (
-                  <TextInput
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#9ca3af"
-                    value={value}
-                    onChangeText={onChange}
-                    onBlur={onBlur}
-                    className="h-11 rounded-lg px-3 text-base text-black bg-gray-100 border border-transparent"
-                  />
-                )}
-              />
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </Modal>
+        onClose={() => setIsCreateModalVisible(false)}
+        categories={categories}
+        onSubmit={handleCreateSubmit}
+        isPending={createTaskMutation.isPending}
+      />
     </SafeAreaView>
   );
 }

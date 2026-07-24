@@ -1,11 +1,11 @@
-import React from 'react';
-import { TouchableOpacity, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { TaskWithStarred, Category } from '../types';
+import React from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { Category, TaskWithStarred } from '../types';
 import { getCategoryColor } from '../utils/colors';
 
-interface TaskItemProps {
+interface ITaskItemProps {
   task: TaskWithStarred;
   category?: Category;
   onToggleComplete: (id: string, completed: boolean) => void;
@@ -17,7 +17,7 @@ export const TaskItem = React.memo(function TaskItem({
   category,
   onToggleComplete,
   onToggleStarred,
-}: TaskItemProps) {
+}: ITaskItemProps) {
   const handlePress = () => {
     router.push(`/task/${task.id}`);
   };
@@ -39,7 +39,7 @@ export const TaskItem = React.memo(function TaskItem({
     <TouchableOpacity
       activeOpacity={0.7}
       style={{ borderLeftColor: category ? categoryColor : '#9ca3af' }}
-      className="flex-row items-center p-3 rounded-lg mb-2 border-l-4 bg-slate-50 shadow-sm"
+      className="flex-row items-center p-3 rounded-lg mb-4 border-l-4 border border-gray-100 bg-slate-50"
       onPress={handlePress}
     >
       <TouchableOpacity

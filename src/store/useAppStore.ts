@@ -1,8 +1,8 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
-interface AppState {
+interface IAppState {
   starredTaskIds: string[];
   toggleStarredTask: (id: string) => void;
   removeStarredTask: (id: string) => void;
@@ -25,7 +25,7 @@ interface AppState {
   setLastSyncTimestamp: (timestamp: number | null) => void;
 }
 
-export const useAppStore = create<AppState>()(
+export const useAppStore = create<IAppState>()(
   persist(
     (set) => ({
       starredTaskIds: [],
