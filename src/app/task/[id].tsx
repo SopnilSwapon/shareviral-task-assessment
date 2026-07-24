@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  StyleSheet,
   View,
   TouchableOpacity,
   ScrollView,
@@ -8,10 +7,10 @@ import {
   Alert,
   Modal,
   TextInput,
-  useColorScheme,
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  Text,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,8 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { tasksApi } from '../../api/tasksApi';
 import { useAppStore } from '../../store/useAppStore';
-import { ThemedText } from '../../components/themed-text';
-import { Colors, Spacing } from '../../constants/theme';
 import { Task, Category, UpdateTaskInput } from '../../types';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { getCategoryColor } from '../../utils/colors';
@@ -28,8 +25,6 @@ import { getCategoryColor } from '../../utils/colors';
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const scheme = useColorScheme();
-  const themeColors = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const queryClient = useQueryClient();
 
   // Zustand Store
@@ -131,19 +126,19 @@ export default function TaskDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.center, { backgroundColor: themeColors.background }]}>
-        <ActivityIndicator size="large" color={themeColors.text} />
+      <View className="flex-1 justify-center items-center bg-white">
+        <ActivityIndicator size="large" color="#000000" />
       </View>
     );
   }
 
   if (!task) {
     return (
-      <View style={[styles.center, { backgroundColor: themeColors.background }]}>
+      <View className="flex-1 justify-center items-center bg-white gap-4">
         <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
-        <ThemedText style={styles.errorText}>Task not found</ThemedText>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ThemedText style={{ color: themeColors.background }}>Go Back</ThemedText>
+        <Text className="text-lg font-bold color-red-500">Task not found</Text>
+        <TouchableOpacity className="bg-gray-500 py-2 px-4 rounded-lg mt-2" onPress={() => router.back()}>
+          <Text className="text-white">Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -159,120 +154,118 @@ export default function TaskDetailScreen() {
     : 'No due date';
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
+    <SafeAreaView className="flex-1 bg-white">
       <OfflineBanner />
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         {/* Category Label */}
         {category && (
-          <View style={[styles.categoryHeader, { backgroundColor: categoryColor + '15' }]}>
-            <View style={[styles.categoryDot, { backgroundColor: categoryColor }]} />
-            <ThemedText style={[styles.categoryText, { color: categoryColor }]}>
+          <View style={{ backgroundColor: categoryColor + '15' }} className="flex-row items-center py-1 px-3 rounded self-start gap-1.5 mb-2">
+            <View style={{ backgroundColor: categoryColor }} className="w-2 h-2 rounded-full" />
+            <Text style={{ color: categoryColor }} className="text-xs font-bold uppercase">
               {category.name}
-            </ThemedText>
+            </Text>
           </View>
         )}
 
         {/* Title & Star Row */}
-        <View style={styles.titleRow}>
-          <ThemedText style={[styles.title, isCompleted && styles.completedText]}>
+        <View className="flex-row justify-between items-start gap-4 mb-3">
+          <Text className={`text-2xl font-bold flex-1 text-black ${isCompleted ? 'line-through opacity-60' : ''}`}>
             {task.title}
-          </ThemedText>
+          </Text>
           <TouchableOpacity
-            style={styles.starButton}
+            className="p-1"
             onPress={() => toggleStarredTask(task.id)}
             testID="detail-star-button"
           >
             <Ionicons
               name={isStarred ? 'star' : 'star-outline'}
               size={28}
-              color={isStarred ? '#f59e0b' : themeColors.textSecondary}
+              color={isStarred ? '#f59e0b' : '#9ca3af'}
             />
           </TouchableOpacity>
         </View>
 
         {/* Date Row */}
-        <View style={[styles.metaRow, { borderBottomColor: themeColors.backgroundElement }]}>
-          <Ionicons name="calendar-outline" size={20} color={themeColors.textSecondary} />
+        <View className="flex-row items-center gap-3 py-3 border-b border-gray-100">
+          <Ionicons name="calendar-outline" size={20} color="#9ca3af" />
           <View>
-            <ThemedText style={[styles.metaLabel, { color: themeColors.textSecondary }]}>
+            <Text className="text-xs font-semibold text-gray-400 mb-0.5">
               Due Date
-            </ThemedText>
-            <ThemedText style={styles.metaValue}>{formattedDueDate}</ThemedText>
+            </Text>
+            <Text className="text-base font-semibold text-black">{formattedDueDate}</Text>
           </View>
         </View>
 
         {/* Status Row */}
-        <View style={[styles.metaRow, { borderBottomColor: themeColors.backgroundElement }]}>
+        <View className="flex-row items-center gap-3 py-3 border-b border-gray-100">
           <Ionicons
             name={isCompleted ? 'checkmark-circle-outline' : 'ellipse-outline'}
             size={20}
-            color={isCompleted ? '#10b981' : themeColors.textSecondary}
+            color={isCompleted ? '#10b981' : '#9ca3af'}
           />
           <View>
-            <ThemedText style={[styles.metaLabel, { color: themeColors.textSecondary }]}>
+            <Text className="text-xs font-semibold text-gray-400 mb-0.5">
               Status
-            </ThemedText>
-            <ThemedText style={styles.metaValue}>
+            </Text>
+            <Text className="text-base font-semibold text-black">
               {isCompleted ? 'Completed' : 'In Progress'}
-            </ThemedText>
+            </Text>
           </View>
         </View>
 
         {/* Description Section */}
-        <View style={styles.descriptionSection}>
-          <ThemedText style={[styles.descriptionTitle, { color: themeColors.textSecondary }]}>
+        <View className="mt-3 gap-2">
+          <Text className="text-xs font-bold text-gray-400 uppercase">
             Description
-          </ThemedText>
-          <ThemedText style={styles.descriptionText}>
+          </Text>
+          <Text className="text-base leading-6 text-black">
             {task.description || 'No description provided.'}
-          </ThemedText>
+          </Text>
         </View>
 
         {/* Actions Button Group */}
-        <View style={styles.actionsContainer}>
+        <View className="mt-8 gap-3">
           <TouchableOpacity
-            style={[
-              styles.actionButton,
-              { backgroundColor: isCompleted ? themeColors.backgroundElement : '#10b981' },
-            ]}
+            className={`flex-row h-12 rounded-lg justify-center items-center gap-2 ${
+              isCompleted ? 'bg-gray-100' : 'bg-emerald-500'
+            }`}
             onPress={handleToggleComplete}
             disabled={updateTaskMutation.isPending}
             testID="detail-complete-button"
           >
             {updateTaskMutation.isPending ? (
-              <ActivityIndicator size="small" color="#ffffff" />
+              <ActivityIndicator size="small" color={isCompleted ? '#000000' : '#ffffff'} />
             ) : (
               <>
                 <Ionicons
                   name={isCompleted ? 'close-circle-outline' : 'checkmark-circle-outline'}
                   size={20}
-                  color={isCompleted ? themeColors.text : '#ffffff'}
+                  color={isCompleted ? '#000000' : '#ffffff'}
                 />
-                <ThemedText
-                  style={[
-                    styles.actionButtonText,
-                    { color: isCompleted ? themeColors.text : '#ffffff' },
-                  ]}
+                <Text
+                  className={`text-base font-bold ${
+                    isCompleted ? 'text-black' : 'text-white'
+                  }`}
                 >
                   {isCompleted ? 'Mark Open' : 'Mark Completed'}
-                </ThemedText>
+                </Text>
               </>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: themeColors.backgroundElement }]}
+            className="flex-row h-12 rounded-lg justify-center items-center gap-2 bg-gray-100"
             onPress={handleOpenEdit}
           >
-            <Ionicons name="create-outline" size={20} color={themeColors.text} />
-            <ThemedText style={[styles.actionButtonText, { color: themeColors.text }]}>
+            <Ionicons name="create-outline" size={20} color="#000000" />
+            <Text className="text-base font-bold text-black">
               Edit Task
-            </ThemedText>
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton]}
+            className="flex-row h-12 rounded-lg justify-center items-center gap-2 bg-red-500"
             onPress={handleDeleteConfirm}
             disabled={deleteTaskMutation.isPending}
           >
@@ -281,9 +274,9 @@ export default function TaskDetailScreen() {
             ) : (
               <>
                 <Ionicons name="trash-outline" size={20} color="#ffffff" />
-                <ThemedText style={[styles.actionButtonText, { color: '#ffffff' }]}>
+                <Text className="text-base font-bold text-white">
                   Delete Task
-                </ThemedText>
+                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -299,78 +292,59 @@ export default function TaskDetailScreen() {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={[styles.modalContainer, { backgroundColor: themeColors.background }]}
+          className="flex-1 bg-white"
         >
-          <View style={styles.modalHeader}>
+          <View className="flex-row justify-between items-center px-4 py-4 border-b border-gray-200">
             <TouchableOpacity onPress={() => setIsEditModalVisible(false)}>
-              <ThemedText style={{ color: '#ef4444', fontSize: 16 }}>Cancel</ThemedText>
+              <Text className="text-red-500 text-base">Cancel</Text>
             </TouchableOpacity>
-            <ThemedText style={styles.modalTitleText}>Edit Task</ThemedText>
+            <Text className="text-lg font-bold text-black">Edit Task</Text>
             <TouchableOpacity onPress={handleSaveEdit}>
-              <ThemedText style={{ color: '#10b981', fontSize: 16, fontWeight: 'bold' }}>
-                Save
-              </ThemedText>
+              <Text className="text-emerald-500 text-base font-bold">Save</Text>
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.modalScroll}>
-            <View style={styles.formGroup}>
-              <ThemedText style={styles.formLabel}>Title *</ThemedText>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+            <View className="gap-1">
+              <Text className="text-sm font-bold text-black">Title *</Text>
               <TextInput
                 placeholder="Enter task title"
-                placeholderTextColor={themeColors.textSecondary}
+                placeholderTextColor="#9ca3af"
                 value={editTitle}
                 onChangeText={setEditTitle}
-                style={[
-                  styles.formInput,
-                  {
-                    color: themeColors.text,
-                    backgroundColor: themeColors.backgroundElement,
-                  },
-                ]}
+                className="h-11 rounded-lg px-3 text-base text-black bg-gray-100"
               />
             </View>
 
-            <View style={styles.formGroup}>
-              <ThemedText style={styles.formLabel}>Description</ThemedText>
+            <View className="gap-1">
+              <Text className="text-sm font-bold text-black">Description</Text>
               <TextInput
                 placeholder="Enter description"
-                placeholderTextColor={themeColors.textSecondary}
+                placeholderTextColor="#9ca3af"
                 value={editDescription}
                 onChangeText={setEditDescription}
                 multiline
                 numberOfLines={3}
-                style={[
-                  styles.formInput,
-                  styles.formInputMultiline,
-                  {
-                    color: themeColors.text,
-                    backgroundColor: themeColors.backgroundElement,
-                  },
-                ]}
+                className="h-24 rounded-lg px-3 py-2 text-base text-black bg-gray-100"
+                style={{ textAlignVertical: 'top' }}
               />
             </View>
 
-            <View style={styles.formGroup}>
-              <ThemedText style={styles.formLabel}>Category</ThemedText>
-              <View style={styles.modalCategoryRow}>
+            <View className="gap-1">
+              <Text className="text-sm font-bold text-black">Category</Text>
+              <View className="flex-row flex-wrap gap-2 py-1">
                 <TouchableOpacity
-                  style={[
-                    styles.formCategoryChip,
-                    editCategoryId === null && { backgroundColor: themeColors.text },
-                    { backgroundColor: themeColors.backgroundElement },
-                  ]}
+                  style={{ backgroundColor: editCategoryId === null ? '#000000' : '#f3f4f6' }}
+                  className="px-4 py-2 rounded-lg"
                   onPress={() => setEditCategoryId(null)}
                 >
-                  <ThemedText
-                    style={[
-                      styles.formCategoryChipText,
-                      editCategoryId === null && { color: themeColors.background },
-                      { color: themeColors.text },
-                    ]}
+                  <Text
+                    className={`text-[13px] font-semibold ${
+                      editCategoryId === null ? 'text-white' : 'text-black'
+                    }`}
                   >
                     None
-                  </ThemedText>
+                  </Text>
                 </TouchableOpacity>
 
                 {categories.map((cat) => {
@@ -379,43 +353,35 @@ export default function TaskDetailScreen() {
                   return (
                     <TouchableOpacity
                       key={cat.id}
-                      style={[
-                        styles.formCategoryChip,
-                        { borderLeftColor: catColor, borderLeftWidth: 3 },
-                        isSel && { backgroundColor: catColor },
-                        !isSel && { backgroundColor: themeColors.backgroundElement },
-                      ]}
+                      style={{
+                        borderLeftColor: catColor,
+                        borderLeftWidth: 3,
+                        backgroundColor: isSel ? catColor : '#f3f4f6',
+                      }}
+                      className="px-4 py-2 rounded-lg"
                       onPress={() => setEditCategoryId(cat.id)}
                     >
-                      <ThemedText
-                        style={[
-                          styles.formCategoryChipText,
-                          isSel && { color: '#ffffff', fontWeight: 'bold' },
-                          { color: isSel ? '#ffffff' : themeColors.text },
-                        ]}
+                      <Text
+                        className={`text-[13px] font-semibold ${
+                          isSel ? 'text-white font-bold' : 'text-black'
+                        }`}
                       >
                         {cat.name}
-                      </ThemedText>
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            <View style={styles.formGroup}>
-              <ThemedText style={styles.formLabel}>Due Date (YYYY-MM-DD)</ThemedText>
+            <View className="gap-1">
+              <Text className="text-sm font-bold text-black">Due Date (YYYY-MM-DD)</Text>
               <TextInput
                 placeholder="YYYY-MM-DD"
-                placeholderTextColor={themeColors.textSecondary}
+                placeholderTextColor="#9ca3af"
                 value={editDueDate}
                 onChangeText={setEditDueDate}
-                style={[
-                  styles.formInput,
-                  {
-                    color: themeColors.text,
-                    backgroundColor: themeColors.backgroundElement,
-                  },
-                ]}
+                className="h-11 rounded-lg px-3 text-base text-black bg-gray-100"
               />
             </View>
           </ScrollView>
@@ -424,171 +390,3 @@ export default function TaskDetailScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  scrollContainer: {
-    padding: Spacing.four,
-    gap: Spacing.three,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  errorText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ef4444',
-  },
-  backButton: {
-    backgroundColor: 'gray',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginTop: Spacing.two,
-  },
-  categoryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    gap: 6,
-    marginBottom: Spacing.two,
-  },
-  categoryDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: Spacing.three,
-    marginBottom: Spacing.three,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    flex: 1,
-  },
-  completedText: {
-    textDecorationLine: 'line-through',
-    opacity: 0.6,
-  },
-  starButton: {
-    padding: Spacing.one,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingVertical: Spacing.three,
-    borderBottomWidth: 1,
-  },
-  metaLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  metaValue: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  descriptionSection: {
-    marginTop: Spacing.three,
-    gap: Spacing.two,
-  },
-  descriptionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  descriptionText: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  actionsContainer: {
-    marginTop: Spacing.five,
-    gap: Spacing.three,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    height: 48,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  actionButtonText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-  deleteButton: {
-    backgroundColor: '#ef4444',
-  },
-  modalContainer: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(128,128,128,0.2)',
-  },
-  modalTitleText: {
-    fontSize: 17,
-    fontWeight: 'bold',
-  },
-  modalScroll: {
-    padding: Spacing.three,
-    gap: Spacing.three,
-  },
-  formGroup: {
-    gap: Spacing.one,
-  },
-  formLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  formInput: {
-    height: 44,
-    borderRadius: 8,
-    paddingHorizontal: Spacing.two,
-    fontSize: 15,
-  },
-  formInputMultiline: {
-    height: 100,
-    paddingTop: Spacing.two,
-    textAlignVertical: 'top',
-  },
-  modalCategoryRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-    paddingVertical: Spacing.one,
-  },
-  formCategoryChip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  formCategoryChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-});

@@ -1,9 +1,7 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { TouchableOpacity, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ThemedText } from './themed-text';
-import { Colors, Spacing } from '../constants/theme';
 import { TaskWithStarred, Category } from '../types';
 import { getCategoryColor } from '../utils/colors';
 
@@ -20,9 +18,6 @@ export const TaskItem = React.memo(function TaskItem({
   onToggleComplete,
   onToggleStarred,
 }: TaskItemProps) {
-  const scheme = useColorScheme();
-  const themeColors = Colors[scheme === 'dark' ? 'dark' : 'light'];
-
   const handlePress = () => {
     router.push(`/task/${task.id}`);
   };
@@ -43,158 +38,78 @@ export const TaskItem = React.memo(function TaskItem({
   return (
     <TouchableOpacity
       activeOpacity={0.7}
-      style={[
-        styles.container,
-        {
-          backgroundColor: themeColors.backgroundElement,
-          borderLeftColor: category ? categoryColor : themeColors.textSecondary,
-        },
-      ]}
+      style={{ borderLeftColor: category ? categoryColor : '#9ca3af' }}
+      className="flex-row items-center p-3 rounded-lg mb-2 border-l-4 bg-slate-50 shadow-sm"
       onPress={handlePress}
     >
       <TouchableOpacity
-        style={styles.checkbox}
+        className="pr-2 justify-center items-center"
         onPress={() => onToggleComplete(task.id, !isCompleted)}
         testID={`task-checkbox-${task.id}`}
       >
         <Ionicons
           name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
           size={24}
-          color={isCompleted ? '#10b981' : themeColors.textSecondary}
+          color={isCompleted ? '#10b981' : '#9ca3af'}
         />
       </TouchableOpacity>
 
-      <View style={styles.content}>
-        <ThemedText
-          style={[
-            styles.title,
-            isCompleted && styles.completedText,
-            { color: isCompleted ? themeColors.textSecondary : themeColors.text },
-          ]}
+      <View className="flex-1 pr-2">
+        <Text
+          className={`text-base font-semibold mb-1 text-black ${
+            isCompleted ? 'line-through text-gray-400' : ''
+          }`}
           numberOfLines={1}
         >
           {task.title}
-        </ThemedText>
+        </Text>
 
-        <View style={styles.metaRow}>
+        <View className="flex-row items-center gap-2">
           {category && (
             <View
-              style={[
-                styles.categoryBadge,
-                { backgroundColor: categoryColor + '18' }, // 9% opacity
-              ]}
+              style={{ backgroundColor: categoryColor + '18' }}
+              className="flex-row items-center py-0.5 px-1.5 rounded gap-1"
             >
               <View
-                style={[styles.categoryDot, { backgroundColor: categoryColor }]}
+                style={{ backgroundColor: categoryColor }}
+                className="w-1.5 h-1.5 rounded-full"
               />
-              <ThemedText style={[styles.categoryText, { color: categoryColor }]}>
+              <Text style={{ color: categoryColor }} className="text-[11px] font-bold">
                 {category.name}
-              </ThemedText>
+              </Text>
             </View>
           )}
 
           {formattedDueDate && (
-            <View style={styles.dueDateBadge}>
+            <View className="flex-row items-center gap-1">
               <Ionicons
                 name="calendar-outline"
                 size={12}
-                color={isOverdue ? '#ef4444' : themeColors.textSecondary}
+                color={isOverdue ? '#ef4444' : '#6b7280'}
               />
-              <ThemedText
-                style={[
-                  styles.dueDateText,
-                  { color: isOverdue ? '#ef4444' : themeColors.textSecondary },
-                ]}
+              <Text
+                className={`text-[11px] font-medium ${
+                  isOverdue ? 'text-red-500' : 'text-gray-500'
+                }`}
               >
                 {formattedDueDate}
-              </ThemedText>
+              </Text>
             </View>
           )}
         </View>
       </View>
 
       <TouchableOpacity
-        style={styles.starButton}
+        className="px-1 py-1 justify-center items-center"
         onPress={() => onToggleStarred(task.id)}
         testID={`task-star-${task.id}`}
       >
         <Ionicons
           name={task.starred ? 'star' : 'star-outline'}
           size={22}
-          color={task.starred ? '#f59e0b' : themeColors.textSecondary}
+          color={task.starred ? '#f59e0b' : '#9ca3af'}
         />
       </TouchableOpacity>
     </TouchableOpacity>
   );
-});
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.two,
-    marginBottom: Spacing.two,
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  checkbox: {
-    paddingRight: Spacing.two,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    flex: 1,
-    paddingRight: Spacing.two,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  completedText: {
-    textDecorationLine: 'line-through',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  categoryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 4,
-    gap: 4,
-  },
-  categoryDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  categoryText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  dueDateBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  dueDateText: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  starButton: {
-    paddingHorizontal: Spacing.one,
-    paddingVertical: Spacing.one,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
 });

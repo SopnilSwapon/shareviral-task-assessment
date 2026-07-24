@@ -1,32 +1,26 @@
 import React, { useState } from 'react';
 import {
-  StyleSheet,
   View,
   TextInput,
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
   Alert,
-  useColorScheme,
   SafeAreaView,
   Keyboard,
   Platform,
+  Text,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 
 import { tasksApi } from '../../api/tasksApi';
-import { ThemedText } from '../../components/themed-text';
-import { Colors, Spacing } from '../../constants/theme';
 import { Category, CreateCategoryInput } from '../../types';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { getCategoryColor } from '../../utils/colors';
 
 export default function CategoriesScreen() {
-  const scheme = useColorScheme();
-  const themeColors = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const queryClient = useQueryClient();
-
   const [name, setName] = useState('');
 
   const { data: categories = [], isLoading, isFetching } = useQuery({
@@ -59,83 +53,76 @@ export default function CategoriesScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
+    <SafeAreaView className="flex-1 bg-white">
       <OfflineBanner />
 
-      <View style={styles.container}>
+      <View className="flex-1 p-4 gap-4">
         {/* Form Container */}
-        <View style={[styles.formContainer, { backgroundColor: themeColors.backgroundElement }]}>
-          <ThemedText style={styles.formTitle}>Add New Category</ThemedText>
+        <View className="p-4 rounded-xl gap-2 bg-slate-50 shadow-sm border border-gray-100">
+          <Text className="text-base font-bold text-black">Add New Category</Text>
 
-          <View style={styles.inputRow}>
+          <View className="flex-row gap-2 mt-1">
             <TextInput
               placeholder="Category name..."
-              placeholderTextColor={themeColors.textSecondary}
+              placeholderTextColor="#9ca3af"
               value={name}
               onChangeText={setName}
-              style={[
-                styles.input,
-                { color: themeColors.text, backgroundColor: themeColors.background },
-              ]}
+              className="flex-1 h-11 rounded-lg px-3 bg-white text-base text-black border border-gray-200"
               testID="category-name-input"
             />
             <TouchableOpacity
-              style={[
-                styles.addButton,
-                { backgroundColor: themeColors.text },
-                createCategoryMutation.isPending && { opacity: 0.7 },
-              ]}
+              className="w-11 h-11 rounded-lg justify-center items-center bg-black active:opacity-70"
               onPress={handleCreate}
               disabled={createCategoryMutation.isPending}
             >
               {createCategoryMutation.isPending ? (
-                <ActivityIndicator size="small" color={themeColors.background} />
+                <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <Ionicons name="add" size={24} color={themeColors.background} />
+                <Ionicons name="add" size={24} color="#ffffff" />
               )}
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Categories List */}
-        <View style={styles.listSection}>
-          <View style={styles.listHeader}>
-            <ThemedText style={styles.listTitle}>All Categories</ThemedText>
+        <View className="flex-1 gap-2">
+          <View className="flex-row items-center justify-between px-1">
+            <Text className="text-base font-bold text-black">All Categories</Text>
             {isFetching && !isLoading && (
-              <ActivityIndicator size="small" color={themeColors.text} />
+              <ActivityIndicator size="small" color="#000000" />
             )}
           </View>
 
           {isLoading ? (
-            <ActivityIndicator size="large" color={themeColors.text} style={styles.loader} />
+            <ActivityIndicator size="large" color="#000000" className="mt-10" />
           ) : categories.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="folder-outline" size={48} color={themeColors.textSecondary} />
-              <ThemedText style={[styles.emptyText, { color: themeColors.textSecondary }]}>
+            <View className="flex-1 justify-center items-center pb-10">
+              <Ionicons name="folder-outline" size={48} color="#9ca3af" />
+              <Text className="text-sm mt-4 text-gray-400">
                 No categories created yet.
-              </ThemedText>
+              </Text>
             </View>
           ) : (
             <FlatList
               data={categories}
               keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.listContainer}
+              contentContainerStyle={{ paddingBottom: 20 }}
               renderItem={({ item }) => {
                 const catColor = getCategoryColor(item.name);
                 return (
-                  <View
-                    style={[
-                      styles.categoryItem,
-                      { backgroundColor: themeColors.backgroundElement },
-                    ]}
-                  >
-                    <View style={styles.categoryLeft}>
-                      <View style={[styles.categoryDot, { backgroundColor: catColor }]} />
-                      <ThemedText style={styles.categoryName}>{item.name}</ThemedText>
+                  <View className="flex-row justify-between items-center p-3 rounded-lg mb-2 bg-slate-50 border border-gray-100 shadow-sm">
+                    <View className="flex-row items-center gap-2">
+                      <View style={{ backgroundColor: catColor }} className="w-3 h-3 rounded-full" />
+                      <Text className="text-[15px] font-semibold text-black">{item.name}</Text>
                     </View>
-                    <ThemedText style={[styles.categoryColorCode, { color: themeColors.textSecondary }]}>
+                    <Text
+                      style={{
+                        fontFamily: Platform.select({ ios: 'Courier', android: 'monospace', default: 'monospace' }),
+                      }}
+                      className="text-xs text-gray-400"
+                    >
                       {catColor}
-                    </ThemedText>
+                    </Text>
                   </View>
                 );
               }}
@@ -146,110 +133,3 @@ export default function CategoriesScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    padding: Spacing.three,
-    gap: Spacing.three,
-  },
-  formContainer: {
-    padding: Spacing.three,
-    borderRadius: Spacing.two,
-    gap: Spacing.two,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  formTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  input: {
-    flex: 1,
-    height: 44,
-    borderRadius: 8,
-    paddingHorizontal: Spacing.two,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(128,128,128,0.1)',
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listSection: {
-    flex: 1,
-    gap: Spacing.two,
-  },
-  listHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
-  },
-  listTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  loader: {
-    marginTop: 40,
-  },
-  listContainer: {
-    paddingBottom: Spacing.four,
-  },
-  categoryItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.two,
-    marginBottom: Spacing.two,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  categoryLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  categoryDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  categoryName: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  categoryColorCode: {
-    fontSize: 12,
-    fontFamily: Platform.select({ ios: 'Courier', android: 'monospace', default: 'monospace' }),
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: 40,
-  },
-  emptyText: {
-    fontSize: 14,
-    marginTop: Spacing.two,
-  },
-});

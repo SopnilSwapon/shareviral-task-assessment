@@ -24,6 +24,7 @@
     "expo-symbols": "~57.0.1",
     "expo-system-ui": "~57.0.1",
     "expo-web-browser": "~57.0.2",
+    "nativewind": "^4.2.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.0",
@@ -44,6 +45,7 @@
     "jest": "^29.7.0",
     "jest-expo": "^57.0.2",
     "react-test-renderer": "^19.2.8",
+    "tailwindcss": "^3.4.17",
     "test-renderer": "^1.2.0",
     "ts-jest": "^29.4.12",
     "typescript": "~6.0.3"

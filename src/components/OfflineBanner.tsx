@@ -1,6 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { ThemedText } from './themed-text';
+import { View, Text } from 'react-native';
 import { useAppStore } from '../store/useAppStore';
 
 export function OfflineBanner() {
@@ -9,26 +8,10 @@ export function OfflineBanner() {
   if (isOnline) return null;
 
   return (
-    <View style={styles.banner}>
-      <ThemedText style={styles.text}>
+    <View className="bg-amber-500 py-2 px-4 items-center justify-center w-full">
+      <Text className="text-black font-bold text-[13px]">
         ⚠️ Offline Mode. Showing cached data.
-      </ThemedText>
+      </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  banner: {
-    backgroundColor: '#f59e0b', // Amber/orange color for offline indicator
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  text: {
-    color: '#000000',
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
-});

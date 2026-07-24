@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
-import { Stack, ThemeProvider, DarkTheme, DefaultTheme } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import NetInfo from '@react-native-community/netinfo';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 
+import '../global.css';
 import { queryClient, asyncStoragePersister } from '../api/queryClient';
 import { useAppStore } from '../store/useAppStore';
 import { AnimatedSplashOverlay } from '../components/animated-icon';
@@ -12,7 +12,6 @@ import { AnimatedSplashOverlay } from '../components/animated-icon';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
   const setIsOnline = useAppStore((state) => state.setIsOnline);
 
   // Network Status Monitor
@@ -32,23 +31,25 @@ export default function RootLayout() {
         maxAge: 1000 * 60 * 60 * 24, // 24 hours cache retention
       }}
     >
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AnimatedSplashOverlay />
-        <Stack
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: colorScheme === 'dark' ? '#000000' : '#ffffff',
-            },
-            headerTitleStyle: {
-              fontWeight: 'bold',
-            },
-            headerShadowVisible: false,
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="task/[id]" options={{ title: 'Task Details', headerBackTitle: 'Back' }} />
-        </Stack>
-      </ThemeProvider>
+      <AnimatedSplashOverlay />
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#ffffff',
+          },
+          headerTintColor: '#000000',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+          headerShadowVisible: false,
+          contentStyle: {
+            backgroundColor: '#ffffff',
+          },
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="task/[id]" options={{ title: 'Task Details', headerBackTitle: 'Back' }} />
+      </Stack>
     </PersistQueryClientProvider>
   );
 }

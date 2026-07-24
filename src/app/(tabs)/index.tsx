@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet,
   View,
   FlatList,
   TextInput,
@@ -9,13 +8,14 @@ import {
   Alert,
   Modal,
   ScrollView,
-  useColorScheme,
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  Text,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from 'expo-router';
 
 import { tasksApi } from '../../api/tasksApi';
 import { useAppStore } from '../../store/useAppStore';
@@ -24,15 +24,12 @@ import { useFilteredSortedTasks } from '../../hooks/useFilteredSortedTasks';
 import { useDebounce } from '../../hooks/useDebounce';
 import { TaskItem } from '../../components/TaskItem';
 import { OfflineBanner } from '../../components/OfflineBanner';
-import { ThemedText } from '../../components/themed-text';
-import { Colors, Spacing } from '../../constants/theme';
 import { Task, CreateTaskInput } from '../../types';
 import { getCategoryColor } from '../../utils/colors';
 
 export default function TasksScreen() {
-  const scheme = useColorScheme();
-  const themeColors = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const queryClient = useQueryClient();
+  const navigation = useNavigation();
 
   // Local UI state
   const [localSearch, setLocalSearch] = useState('');
@@ -88,6 +85,21 @@ export default function TasksScreen() {
     queryFn: tasksApi.fetchTasks,
     select: (data) => mergeRemoteWithLocalStarred(data, starredTaskIds),
   });
+
+  // Dynamically set manual refresh button in header top right
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => refetch()}
+          className="pr-4 justify-center items-center active:opacity-60"
+          testID="manual-refresh-button"
+        >
+          <Ionicons name="refresh" size={22} color="#000000" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, refetch]);
 
   // Track sync status
   useEffect(() => {
@@ -180,79 +192,75 @@ export default function TasksScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: themeColors.background }]}>
+    <SafeAreaView className="flex-1 bg-white">
       <OfflineBanner />
 
       {/* Header Info Panel */}
-      <View style={[styles.syncStatusHeader, { borderBottomColor: themeColors.backgroundElement }]}>
-        <View style={styles.syncStatusLeft}>
+      <View className="flex-row items-center justify-between px-4 py-2 border-b border-gray-100">
+        <View className="flex-row items-center gap-1.5">
           <Ionicons
             name={isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'}
             size={16}
             color={isOnline ? '#10b981' : '#f59e0b'}
           />
-          <ThemedText style={[styles.syncText, { color: themeColors.textSecondary }]}>
+          <Text className="text-xs text-gray-500">
             {getSyncStatusText()}
-          </ThemedText>
+          </Text>
         </View>
         {(isFetching || isLoading) && (
-          <ActivityIndicator size="small" color={themeColors.text} style={styles.syncSpinner} />
+          <ActivityIndicator size="small" color="#000000" className="mr-1" />
         )}
       </View>
 
       {/* Filter / Search section */}
-      <View style={styles.filterSection}>
+      <View className="pt-2 pb-1">
         {/* Search Bar */}
-        <View style={[styles.searchContainer, { backgroundColor: themeColors.backgroundElement }]}>
-          <Ionicons name="search" size={20} color={themeColors.textSecondary} style={styles.searchIcon} />
+        <View className="flex-row items-center mx-4 px-3 rounded-lg h-10 mb-3 bg-gray-100">
+          <Ionicons name="search" size={20} color="#9ca3af" className="mr-2" />
           <TextInput
             placeholder="Search tasks..."
-            placeholderTextColor={themeColors.textSecondary}
+            placeholderTextColor="#9ca3af"
             value={localSearch}
             onChangeText={setLocalSearch}
-            style={[styles.searchInput, { color: themeColors.text }]}
+            className="flex-1 text-sm font-medium text-black p-0"
             testID="search-input"
           />
           {localSearch.length > 0 && (
-            <TouchableOpacity onPress={() => setLocalSearch('')} style={styles.clearSearch}>
-              <Ionicons name="close-circle" size={18} color={themeColors.textSecondary} />
+            <TouchableOpacity onPress={() => setLocalSearch('')} className="p-1">
+              <Ionicons name="close-circle" size={18} color="#9ca3af" />
             </TouchableOpacity>
           )}
         </View>
 
         {/* Status Filters */}
-        <View style={styles.statusFilters}>
+        <View className="flex-row items-center mx-4 mb-3 gap-2">
           {(['all', 'open', 'completed'] as const).map((filter) => {
             const isActive = statusFilter === filter;
             return (
               <TouchableOpacity
                 key={filter}
-                style={[
-                  styles.statusTab,
-                  isActive && { backgroundColor: themeColors.backgroundSelected },
-                ]}
+                style={{ backgroundColor: isActive ? '#e5e7eb' : 'transparent' }}
+                className="flex-1 h-8 items-center justify-center rounded-lg"
                 onPress={() => setStatusFilter(filter)}
               >
-                <ThemedText
-                  style={[
-                    styles.statusTabText,
-                    isActive && styles.activeStatusText,
-                    { color: isActive ? themeColors.text : themeColors.textSecondary },
-                  ]}
+                <Text
+                  className={`text-[13px] font-semibold ${
+                    isActive ? 'text-black font-bold' : 'text-gray-500'
+                  }`}
                 >
                   {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                </ThemedText>
+                </Text>
               </TouchableOpacity>
             );
           })}
 
           {/* Sort trigger button */}
           <TouchableOpacity
-            style={[styles.sortButton, { backgroundColor: themeColors.backgroundElement }]}
+            className="flex-row items-center justify-center px-3 h-8 rounded-lg gap-1 bg-gray-100"
             onPress={() => setIsSortModalVisible(true)}
           >
-            <Ionicons name="funnel-outline" size={16} color={themeColors.text} />
-            <ThemedText style={styles.sortButtonText}>Sort</ThemedText>
+            <Ionicons name="funnel-outline" size={16} color="#000000" />
+            <Text className="text-xs font-semibold text-black">Sort</Text>
           </TouchableOpacity>
         </View>
 
@@ -260,24 +268,20 @@ export default function TasksScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScroll}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 8, paddingBottom: 8 }}
         >
           <TouchableOpacity
-            style={[
-              styles.categoryChip,
-              categoryId === null && { backgroundColor: themeColors.text },
-            ]}
+            style={{ backgroundColor: categoryId === null ? '#000000' : 'transparent' }}
+            className="px-3 py-1.5 rounded-full justify-center items-center border border-gray-200"
             onPress={() => setCategoryId(null)}
           >
-            <ThemedText
-              style={[
-                styles.categoryChipText,
-                categoryId === null && { color: themeColors.background, fontWeight: 'bold' },
-                { color: categoryId === null ? themeColors.background : themeColors.text },
-              ]}
+            <Text
+              className={`text-xs font-medium ${
+                categoryId === null ? 'text-white font-bold' : 'text-black'
+              }`}
             >
               All Categories
-            </ThemedText>
+            </Text>
           </TouchableOpacity>
 
           {categories.map((cat) => {
@@ -286,22 +290,21 @@ export default function TasksScreen() {
             return (
               <TouchableOpacity
                 key={cat.id}
-                style={[
-                  styles.categoryChip,
-                  { borderLeftWidth: 3, borderLeftColor: catColor },
-                  isSelected && { backgroundColor: catColor },
-                ]}
+                style={{
+                  borderLeftWidth: 3,
+                  borderLeftColor: catColor,
+                  backgroundColor: isSelected ? catColor : 'transparent',
+                }}
+                className="px-3 py-1.5 rounded-full justify-center items-center border border-gray-200"
                 onPress={() => setCategoryId(isSelected ? null : cat.id)}
               >
-                <ThemedText
-                  style={[
-                    styles.categoryChipText,
-                    isSelected && { color: '#ffffff', fontWeight: 'bold' },
-                    { color: isSelected ? '#ffffff' : themeColors.text },
-                  ]}
+                <Text
+                  className={`text-xs font-medium ${
+                    isSelected ? 'text-white font-bold' : 'text-black'
+                  }`}
                 >
                   {cat.name}
-                </ThemedText>
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -310,23 +313,23 @@ export default function TasksScreen() {
 
       {/* Task List */}
       {isLoading && tasks.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={themeColors.text} />
+        <View className="flex-1 justify-center items-center gap-4">
+          <ActivityIndicator size="large" color="#000000" />
         </View>
       ) : isError && tasks.length === 0 ? (
-        <View style={styles.centerContainer}>
+        <View className="flex-1 justify-center items-center gap-4">
           <Ionicons name="warning-outline" size={48} color="#ef4444" />
-          <ThemedText style={styles.errorText}>Failed to load tasks</ThemedText>
+          <Text className="text-base font-semibold color-red-500">Failed to load tasks</Text>
           <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: themeColors.text }]}
+            className="py-2 px-4 rounded-lg bg-black"
             onPress={() => refetch()}
           >
-            <ThemedText style={{ color: themeColors.background }}>Retry</ThemedText>
+            <Text className="text-white">Retry</Text>
           </TouchableOpacity>
         </View>
       ) : filteredSortedTasks.length === 0 ? (
         <ScrollView
-          contentContainerStyle={styles.emptyContainer}
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 40 }}
           refreshControl={
             <FlatList
               data={[]}
@@ -337,19 +340,19 @@ export default function TasksScreen() {
             />
           }
         >
-          <Ionicons name="document-text-outline" size={64} color={themeColors.textSecondary} />
-          <ThemedText style={[styles.emptyText, { color: themeColors.textSecondary }]}>
+          <Ionicons name="document-text-outline" size={64} color="#9ca3af" />
+          <Text className="text-lg font-bold mt-4 text-gray-400">
             No tasks found.
-          </ThemedText>
-          <ThemedText style={[styles.emptySubtext, { color: themeColors.textSecondary }]}>
+          </Text>
+          <Text className="text-sm text-center mt-1 text-gray-400">
             Try adjusting filters or create a new task.
-          </ThemedText>
+          </Text>
         </ScrollView>
       ) : (
         <FlatList
           data={filteredSortedTasks}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}
           refreshing={isFetching}
           onRefresh={refetch}
           renderItem={({ item }) => {
@@ -368,10 +371,10 @@ export default function TasksScreen() {
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        style={[styles.fab, { backgroundColor: themeColors.text }]}
+        className="absolute right-6 bottom-6 w-14 h-14 rounded-full justify-center items-center bg-black shadow-lg"
         onPress={() => setIsCreateModalVisible(true)}
       >
-        <Ionicons name="add" size={28} color={themeColors.background} />
+        <Ionicons name="add" size={28} color="#ffffff" />
       </TouchableOpacity>
 
       {/* Sort Options Modal */}
@@ -382,14 +385,14 @@ export default function TasksScreen() {
         onRequestClose={() => setIsSortModalVisible(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          className="flex-1 bg-black/40 justify-end"
           activeOpacity={1}
           onPress={() => setIsSortModalVisible(false)}
         >
-          <View style={[styles.sortModalContent, { backgroundColor: themeColors.background }]}>
-            <ThemedText style={styles.modalTitle}>Sort Tasks By</ThemedText>
+          <View className="bg-white rounded-t-2xl p-6 pb-8">
+            <Text className="text-lg font-bold mb-4 text-black">Sort Tasks By</Text>
 
-            <View style={styles.modalDivider} />
+            <View className="h-[1px] bg-gray-200 my-2" />
 
             {/* Sort field options */}
             {(
@@ -401,26 +404,25 @@ export default function TasksScreen() {
             ).map((option) => (
               <TouchableOpacity
                 key={option.value}
-                style={styles.sortOptionRow}
+                className="flex-row justify-between items-center py-3"
                 onPress={() => setSortBy(option.value)}
               >
-                <ThemedText
-                  style={[
-                    styles.sortOptionText,
-                    sortBy === option.value && styles.selectedOptionText,
-                  ]}
+                <Text
+                  className={`text-base ${
+                    sortBy === option.value ? 'text-emerald-500 font-bold' : 'text-gray-500'
+                  }`}
                 >
                   {option.label}
-                </ThemedText>
+                </Text>
                 {sortBy === option.value && (
                   <Ionicons name="checkmark" size={18} color="#10b981" />
                 )}
               </TouchableOpacity>
             ))}
 
-            <View style={styles.modalDivider} />
+            <View className="h-[1px] bg-gray-200 my-2" />
 
-            <ThemedText style={styles.modalSubTitle}>Order</ThemedText>
+            <Text className="text-sm font-bold text-gray-400 mt-2 mb-1">Order</Text>
 
             {/* Sort order options */}
             {(
@@ -431,17 +433,16 @@ export default function TasksScreen() {
             ).map((option) => (
               <TouchableOpacity
                 key={option.value}
-                style={styles.sortOptionRow}
+                className="flex-row justify-between items-center py-3"
                 onPress={() => setSortOrder(option.value)}
               >
-                <ThemedText
-                  style={[
-                    styles.sortOptionText,
-                    sortOrder === option.value && styles.selectedOptionText,
-                  ]}
+                <Text
+                  className={`text-base ${
+                    sortOrder === option.value ? 'text-emerald-500 font-bold' : 'text-gray-500'
+                  }`}
                 >
                   {option.label}
-                </ThemedText>
+                </Text>
                 {sortOrder === option.value && (
                   <Ionicons name="checkmark" size={18} color="#10b981" />
                 )}
@@ -460,78 +461,59 @@ export default function TasksScreen() {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={[styles.modalContainer, { backgroundColor: themeColors.background }]}
+          className="flex-1 bg-white"
         >
-          <View style={styles.modalHeader}>
+          <View className="flex-row justify-between items-center px-4 py-4 border-b border-gray-200">
             <TouchableOpacity onPress={() => setIsCreateModalVisible(false)}>
-              <ThemedText style={{ color: '#ef4444', fontSize: 16 }}>Cancel</ThemedText>
+              <Text className="text-red-500 text-base">Cancel</Text>
             </TouchableOpacity>
-            <ThemedText style={styles.modalTitleText}>New Task</ThemedText>
+            <Text className="text-lg font-bold text-black">New Task</Text>
             <TouchableOpacity onPress={handleCreateTask}>
-              <ThemedText style={{ color: '#10b981', fontSize: 16, fontWeight: 'bold' }}>
-                Save
-              </ThemedText>
+              <Text className="text-emerald-500 text-base font-bold">Save</Text>
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.modalScroll}>
-            <View style={styles.formGroup}>
-              <ThemedText style={styles.formLabel}>Title *</ThemedText>
+          <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+            <View className="gap-1">
+              <Text className="text-sm font-bold text-black">Title *</Text>
               <TextInput
                 placeholder="Enter task title"
-                placeholderTextColor={themeColors.textSecondary}
+                placeholderTextColor="#9ca3af"
                 value={newTitle}
                 onChangeText={setNewTitle}
-                style={[
-                  styles.formInput,
-                  {
-                    color: themeColors.text,
-                    backgroundColor: themeColors.backgroundElement,
-                  },
-                ]}
+                className="h-11 rounded-lg px-3 text-base text-black bg-gray-100"
               />
             </View>
 
-            <View style={styles.formGroup}>
-              <ThemedText style={styles.formLabel}>Description</ThemedText>
+            <View className="gap-1">
+              <Text className="text-sm font-bold text-black">Description</Text>
               <TextInput
                 placeholder="Enter description"
-                placeholderTextColor={themeColors.textSecondary}
+                placeholderTextColor="#9ca3af"
                 value={newDescription}
                 onChangeText={setNewDescription}
                 multiline
                 numberOfLines={3}
-                style={[
-                  styles.formInput,
-                  styles.formInputMultiline,
-                  {
-                    color: themeColors.text,
-                    backgroundColor: themeColors.backgroundElement,
-                  },
-                ]}
+                className="h-24 rounded-lg px-3 py-2 text-base text-black bg-gray-100"
+                style={{ textAlignVertical: 'top' }}
               />
             </View>
 
-            <View style={styles.formGroup}>
-              <ThemedText style={styles.formLabel}>Category</ThemedText>
-              <View style={styles.modalCategoryRow}>
+            <View className="gap-1">
+              <Text className="text-sm font-bold text-black">Category</Text>
+              <View className="flex-row flex-wrap gap-2 py-1">
                 <TouchableOpacity
-                  style={[
-                    styles.formCategoryChip,
-                    newCategoryId === null && { backgroundColor: themeColors.text },
-                    { backgroundColor: themeColors.backgroundElement },
-                  ]}
+                  style={{ backgroundColor: newCategoryId === null ? '#000000' : '#f3f4f6' }}
+                  className="px-4 py-2 rounded-lg"
                   onPress={() => setNewCategoryId(null)}
                 >
-                  <ThemedText
-                    style={[
-                      styles.formCategoryChipText,
-                      newCategoryId === null && { color: themeColors.background },
-                      { color: themeColors.text },
-                    ]}
+                  <Text
+                    className={`text-[13px] font-semibold ${
+                      newCategoryId === null ? 'text-white' : 'text-black'
+                    }`}
                   >
                     None
-                  </ThemedText>
+                  </Text>
                 </TouchableOpacity>
 
                 {categories.map((cat) => {
@@ -540,43 +522,35 @@ export default function TasksScreen() {
                   return (
                     <TouchableOpacity
                       key={cat.id}
-                      style={[
-                        styles.formCategoryChip,
-                        { borderLeftColor: catColor, borderLeftWidth: 3 },
-                        isSel && { backgroundColor: catColor },
-                        !isSel && { backgroundColor: themeColors.backgroundElement },
-                      ]}
+                      style={{
+                        borderLeftColor: catColor,
+                        borderLeftWidth: 3,
+                        backgroundColor: isSel ? catColor : '#f3f4f6',
+                      }}
+                      className="px-4 py-2 rounded-lg"
                       onPress={() => setNewCategoryId(cat.id)}
                     >
-                      <ThemedText
-                        style={[
-                          styles.formCategoryChipText,
-                          isSel && { color: '#ffffff', fontWeight: 'bold' },
-                          { color: isSel ? '#ffffff' : themeColors.text },
-                        ]}
+                      <Text
+                        className={`text-[13px] font-semibold ${
+                          isSel ? 'text-white font-bold' : 'text-black'
+                        }`}
                       >
                         {cat.name}
-                      </ThemedText>
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
 
-            <View style={styles.formGroup}>
-              <ThemedText style={styles.formLabel}>Due Date (YYYY-MM-DD)</ThemedText>
+            <View className="gap-1">
+              <Text className="text-sm font-bold text-black">Due Date (YYYY-MM-DD)</Text>
               <TextInput
                 placeholder="YYYY-MM-DD"
-                placeholderTextColor={themeColors.textSecondary}
+                placeholderTextColor="#9ca3af"
                 value={newDueDate}
                 onChangeText={setNewDueDate}
-                style={[
-                  styles.formInput,
-                  {
-                    color: themeColors.text,
-                    backgroundColor: themeColors.backgroundElement,
-                  },
-                ]}
+                className="h-11 rounded-lg px-3 text-base text-black bg-gray-100"
               />
             </View>
           </ScrollView>
@@ -585,253 +559,3 @@ export default function TasksScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  syncStatusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderBottomWidth: 1,
-  },
-  syncStatusLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  syncText: {
-    fontSize: 12,
-  },
-  syncSpinner: {
-    marginRight: 4,
-  },
-  filterSection: {
-    paddingTop: Spacing.two,
-    paddingBottom: Spacing.one,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: Spacing.three,
-    paddingHorizontal: Spacing.two,
-    borderRadius: Spacing.two,
-    height: 40,
-    marginBottom: Spacing.two,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    padding: 0,
-  },
-  clearSearch: {
-    padding: 4,
-  },
-  statusFilters: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: Spacing.three,
-    marginBottom: Spacing.two,
-    gap: Spacing.two,
-  },
-  statusTab: {
-    flex: 1,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-  },
-  statusTabText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  activeStatusText: {
-    fontWeight: '700',
-  },
-  sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.two,
-    height: 32,
-    borderRadius: 8,
-    gap: 4,
-  },
-  sortButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  categoryScroll: {
-    paddingHorizontal: Spacing.three,
-    gap: Spacing.two,
-    paddingBottom: Spacing.two,
-  },
-  categoryChip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(128,128,128,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  categoryChipText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  listContainer: {
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.five * 3,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  errorText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ef4444',
-  },
-  primaryButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  emptyContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.five,
-    paddingBottom: Spacing.five * 2,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: Spacing.two,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  fab: {
-    position: 'absolute',
-    right: Spacing.four,
-    bottom: Spacing.four,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'flex-end',
-  },
-  sortModalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: Spacing.four,
-    paddingBottom: Spacing.five,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: Spacing.two,
-  },
-  modalSubTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: 'gray',
-    marginTop: Spacing.two,
-    marginBottom: Spacing.one,
-  },
-  modalDivider: {
-    height: 1,
-    backgroundColor: 'rgba(128,128,128,0.2)',
-    marginVertical: Spacing.two,
-  },
-  sortOptionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.two,
-  },
-  sortOptionText: {
-    fontSize: 16,
-    color: 'gray',
-  },
-  selectedOptionText: {
-    color: '#10b981',
-    fontWeight: 'bold',
-  },
-  modalContainer: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(128,128,128,0.2)',
-  },
-  modalTitleText: {
-    fontSize: 17,
-    fontWeight: 'bold',
-  },
-  modalScroll: {
-    padding: Spacing.three,
-    gap: Spacing.three,
-  },
-  formGroup: {
-    gap: Spacing.one,
-  },
-  formLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  formInput: {
-    height: 44,
-    borderRadius: 8,
-    paddingHorizontal: Spacing.two,
-    fontSize: 15,
-  },
-  formInputMultiline: {
-    height: 100,
-    paddingTop: Spacing.two,
-    textAlignVertical: 'top',
-  },
-  modalCategoryRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-    paddingVertical: Spacing.one,
-  },
-  formCategoryChip: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  formCategoryChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-});
