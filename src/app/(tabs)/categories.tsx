@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   TextInput,
@@ -11,44 +11,57 @@ import {
   Platform,
   Text,
 } from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import { useForm, Controller } from 'react-hook-form';
 
-import { tasksApi } from '../../api/tasksApi';
+import { useAppQuery } from '../../hooks/useAppQuery';
+import { useAppMutation } from '../../hooks/useAppMutation';
+import { QK_CATEGORIES } from '../../hooks/queryKeys';
 import { Category, CreateCategoryInput } from '../../types';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { getCategoryColor } from '../../utils/colors';
 
+type TCategoryFormValues = {
+  name: string;
+};
+
 export default function CategoriesScreen() {
   const queryClient = useQueryClient();
-  const [name, setName] = useState('');
 
-  const { data: categories = [], isLoading, isFetching } = useQuery({
-    queryKey: ['categories'],
-    queryFn: tasksApi.fetchCategories,
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<TCategoryFormValues>({
+    defaultValues: { name: '' },
   });
 
-  const createCategoryMutation = useMutation({
-    mutationFn: (categoryData: CreateCategoryInput) => tasksApi.createCategory(categoryData),
-    onSuccess: (newCategory) => {
-      queryClient.setQueryData<Category[]>(['categories'], (old) =>
-        old ? [...old, newCategory].sort((a, b) => a.name.localeCompare(b.name)) : [newCategory]
+  const { data: categories = [], isLoading, isFetching } = useAppQuery<Category[]>({
+    queryKey: [QK_CATEGORIES],
+    url: '/categories?select=*&order=name.asc',
+  });
+
+  const createCategoryMutation = useAppMutation<Category, CreateCategoryInput>({
+    method: 'POST',
+    url: '/categories',
+    silent: true,
+    onSuccess: (response) => {
+      queryClient.setQueryData<Category[]>([QK_CATEGORIES], (old) =>
+        old ? [...old, response.data].sort((a, b) => a.name.localeCompare(b.name)) : [response.data]
       );
-      setName('');
+      reset();
       Keyboard.dismiss();
     },
-    onError: (err) => {
-      Alert.alert('Error', 'Could not create category on the remote server: ' + err.message);
+    onError: (err: any) => {
+      Alert.alert('Error', 'Could not create category: ' + (err.message || 'Something went wrong.'));
     },
   });
 
-  const handleCreate = () => {
-    if (!name.trim()) {
-      Alert.alert('Validation Error', 'Category name is required.');
-      return;
-    }
+  const onSubmit = (values: TCategoryFormValues) => {
     createCategoryMutation.mutate({
-      name: name.trim(),
+      name: values.name.trim(),
     });
   };
 
@@ -61,18 +74,39 @@ export default function CategoriesScreen() {
         <View className="p-4 rounded-xl gap-2 bg-slate-50 shadow-sm border border-gray-100">
           <Text className="text-base font-bold text-black">Add New Category</Text>
 
-          <View className="flex-row gap-2 mt-1">
-            <TextInput
-              placeholder="Category name..."
-              placeholderTextColor="#9ca3af"
-              value={name}
-              onChangeText={setName}
-              className="flex-1 h-11 rounded-lg px-3 bg-white text-base text-black border border-gray-200"
-              testID="category-name-input"
-            />
+          <View className="flex-row gap-2 mt-1 items-start">
+            <View className="flex-1">
+              <Controller
+                control={control}
+                name="name"
+                rules={{
+                  required: 'Category name is required',
+                  validate: (value) => value.trim().length > 0 || 'Category name is required',
+                }}
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <TextInput
+                    placeholder="Category name..."
+                    placeholderTextColor="#9ca3af"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    className={`h-11 rounded-lg px-3 bg-white text-base text-black border ${
+                      errors.name ? 'border-red-500' : 'border-gray-200'
+                    }`}
+                    testID="category-name-input"
+                  />
+                )}
+              />
+              {errors.name && (
+                <Text className="text-red-500 text-xs mt-1 pl-1" testID="category-name-error">
+                  {errors.name.message}
+                </Text>
+              )}
+            </View>
+
             <TouchableOpacity
               className="w-11 h-11 rounded-lg justify-center items-center bg-black active:opacity-70"
-              onPress={handleCreate}
+              onPress={handleSubmit(onSubmit)}
               disabled={createCategoryMutation.isPending}
             >
               {createCategoryMutation.isPending ? (

@@ -1,26 +1,36 @@
-import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import {
-  View,
-  TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Alert,
-  Modal,
-  TextInput,
-  SafeAreaView,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  ScrollView,
   Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { tasksApi } from '../../api/tasksApi';
-import { useAppStore } from '../../store/useAppStore';
-import { Task, Category, UpdateTaskInput } from '../../types';
 import { OfflineBanner } from '../../components/OfflineBanner';
+import { QK_CATEGORIES, QK_TASKS } from '../../hooks/queryKeys';
+import { useAppMutation } from '../../hooks/useAppMutation';
+import { useAppQuery } from '../../hooks/useAppQuery';
+import { useAppStore } from '../../store/useAppStore';
+import { Category, Task, UpdateTaskInput } from '../../types';
 import { getCategoryColor } from '../../utils/colors';
+
+type TTaskEditFormValues = {
+  title: string;
+  description: string;
+  category_id: string | null;
+  due_date: string;
+};
 
 export default function TaskDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,22 +40,30 @@ export default function TaskDetailScreen() {
   // Zustand Store
   const { starredTaskIds, toggleStarredTask, removeStarredTask } = useAppStore();
 
-  // Modal / Edit States
+  // Modal State
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
-  const [editDueDate, setEditDueDate] = useState('');
 
-  // Fetch cached tasks and categories
-  const { data: tasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ['tasks'],
-    queryFn: tasksApi.fetchTasks,
+  // React Hook Form
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<TTaskEditFormValues>();
+
+  const editCategoryId = watch('category_id');
+
+  // Fetch cached tasks and categories using useAppQuery
+  const { data: tasks = [], isLoading } = useAppQuery<Task[]>({
+    queryKey: [QK_TASKS],
+    url: '/tasks?select=*&order=created_at.desc',
   });
 
-  const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: ['categories'],
-    queryFn: tasksApi.fetchCategories,
+  const { data: categories = [] } = useAppQuery<Category[]>({
+    queryKey: [QK_CATEGORIES],
+    url: '/categories?select=*&order=name.asc',
   });
 
   const task = tasks.find((t) => t.id === id);
@@ -54,31 +72,35 @@ export default function TaskDetailScreen() {
   const categoryColor = getCategoryColor(category?.name);
   const isCompleted = task?.status === 'done';
 
-  // Mutations
-  const updateTaskMutation = useMutation({
-    mutationFn: (updates: UpdateTaskInput) => tasksApi.updateTask(id || '', updates),
-    onSuccess: (updatedTask) => {
-      queryClient.setQueryData<Task[]>(['tasks'], (old) =>
-        old ? old.map((t) => (t.id === updatedTask.id ? updatedTask : t)) : []
+  // Mutations using useAppMutation
+  const updateTaskMutation = useAppMutation<Task, UpdateTaskInput>({
+    method: 'PATCH',
+    url: `/tasks?id=eq.${id}`,
+    silent: true,
+    onSuccess: (response) => {
+      queryClient.setQueryData<Task[]>([QK_TASKS], (old) =>
+        old ? old.map((t) => (t.id === response.data.id ? response.data : t)) : []
       );
       setIsEditModalVisible(false);
     },
-    onError: (err) => {
+    onError: (err: any) => {
       Alert.alert('Update Failed', 'Could not sync updates to server: ' + err.message);
     },
   });
 
-  const deleteTaskMutation = useMutation({
-    mutationFn: () => tasksApi.deleteTask(id || ''),
+  const deleteTaskMutation = useAppMutation<void, void>({
+    method: 'DELETE',
+    url: `/tasks?id=eq.${id}`,
+    silent: true,
     onSuccess: () => {
-      queryClient.setQueryData<Task[]>(['tasks'], (old) =>
+      queryClient.setQueryData<Task[]>([QK_TASKS], (old) =>
         old ? old.filter((t) => t.id !== id) : []
       );
       removeStarredTask(id || '');
       router.back();
     },
-    onError: (err) => {
-      Alert.alert('Delete Failed', 'Could not delete task from server: ' + err.message);
+    onError: (err: any) => {
+      Alert.alert('Delete Failed', 'Could not delete task: ' + err.message);
     },
   });
 
@@ -90,25 +112,21 @@ export default function TaskDetailScreen() {
 
   const handleOpenEdit = () => {
     if (!task) return;
-    setEditTitle(task.title);
-    setEditDescription(task.description || '');
-    setEditCategoryId(task.category_id);
-    setEditDueDate(
-      task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : ''
-    );
+    reset({
+      title: task.title,
+      description: task.description || '',
+      category_id: task.category_id,
+      due_date: task.due_date ? new Date(task.due_date).toISOString().split('T')[0] : '',
+    });
     setIsEditModalVisible(true);
   };
 
-  const handleSaveEdit = () => {
-    if (!editTitle.trim()) {
-      Alert.alert('Validation Error', 'Task title is required.');
-      return;
-    }
+  const onSubmit = (values: TTaskEditFormValues) => {
     const updates: UpdateTaskInput = {
-      title: editTitle.trim(),
-      description: editDescription.trim() || '',
-      category_id: editCategoryId,
-      due_date: editDueDate ? new Date(editDueDate).toISOString() : null,
+      title: values.title.trim(),
+      description: values.description.trim() || '',
+      category_id: values.category_id,
+      due_date: values.due_date ? new Date(values.due_date).toISOString() : null,
     };
     updateTaskMutation.mutate(updates);
   };
@@ -299,7 +317,7 @@ export default function TaskDetailScreen() {
               <Text className="text-red-500 text-base">Cancel</Text>
             </TouchableOpacity>
             <Text className="text-lg font-bold text-black">Edit Task</Text>
-            <TouchableOpacity onPress={handleSaveEdit}>
+            <TouchableOpacity onPress={handleSubmit(onSubmit)}>
               <Text className="text-emerald-500 text-base font-bold">Save</Text>
             </TouchableOpacity>
           </View>
@@ -307,26 +325,51 @@ export default function TaskDetailScreen() {
           <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
             <View className="gap-1">
               <Text className="text-sm font-bold text-black">Title *</Text>
-              <TextInput
-                placeholder="Enter task title"
-                placeholderTextColor="#9ca3af"
-                value={editTitle}
-                onChangeText={setEditTitle}
-                className="h-11 rounded-lg px-3 text-base text-black bg-gray-100"
+              <Controller
+                control={control}
+                name="title"
+                rules={{
+                  required: 'Task title is required',
+                  validate: (value) => value.trim().length > 0 || 'Task title is required',
+                }}
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <TextInput
+                    placeholder="Enter task title"
+                    placeholderTextColor="#9ca3af"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    className={`h-11 rounded-lg px-3 text-base text-black bg-gray-100 border ${
+                      errors.title ? 'border-red-500' : 'border-transparent'
+                    }`}
+                  />
+                )}
               />
+              {errors.title && (
+                <Text className="text-red-500 text-xs pl-1">
+                  {errors.title.message}
+                </Text>
+              )}
             </View>
 
             <View className="gap-1">
               <Text className="text-sm font-bold text-black">Description</Text>
-              <TextInput
-                placeholder="Enter description"
-                placeholderTextColor="#9ca3af"
-                value={editDescription}
-                onChangeText={setEditDescription}
-                multiline
-                numberOfLines={3}
-                className="h-24 rounded-lg px-3 py-2 text-base text-black bg-gray-100"
-                style={{ textAlignVertical: 'top' }}
+              <Controller
+                control={control}
+                name="description"
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <TextInput
+                    placeholder="Enter description"
+                    placeholderTextColor="#9ca3af"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    multiline
+                    numberOfLines={3}
+                    className="h-24 rounded-lg px-3 py-2 text-base text-black bg-gray-100 border border-transparent"
+                    style={{ textAlignVertical: 'top' }}
+                  />
+                )}
               />
             </View>
 
@@ -336,7 +379,7 @@ export default function TaskDetailScreen() {
                 <TouchableOpacity
                   style={{ backgroundColor: editCategoryId === null ? '#000000' : '#f3f4f6' }}
                   className="px-4 py-2 rounded-lg"
-                  onPress={() => setEditCategoryId(null)}
+                  onPress={() => setValue('category_id', null)}
                 >
                   <Text
                     className={`text-[13px] font-semibold ${
@@ -359,7 +402,7 @@ export default function TaskDetailScreen() {
                         backgroundColor: isSel ? catColor : '#f3f4f6',
                       }}
                       className="px-4 py-2 rounded-lg"
-                      onPress={() => setEditCategoryId(cat.id)}
+                      onPress={() => setValue('category_id', isSel ? null : cat.id)}
                     >
                       <Text
                         className={`text-[13px] font-semibold ${
@@ -376,12 +419,19 @@ export default function TaskDetailScreen() {
 
             <View className="gap-1">
               <Text className="text-sm font-bold text-black">Due Date (YYYY-MM-DD)</Text>
-              <TextInput
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#9ca3af"
-                value={editDueDate}
-                onChangeText={setEditDueDate}
-                className="h-11 rounded-lg px-3 text-base text-black bg-gray-100"
+              <Controller
+                control={control}
+                name="due_date"
+                render={({ field: { onChange, value, onBlur } }) => (
+                  <TextInput
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#9ca3af"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    className="h-11 rounded-lg px-3 text-base text-black bg-gray-100 border border-transparent"
+                  />
+                )}
               />
             </View>
           </ScrollView>

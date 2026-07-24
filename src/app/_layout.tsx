@@ -1,8 +1,11 @@
 import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar, LogBox } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+
+LogBox.ignoreLogs(['Cannot connect to Expo CLI']);
 
 import '../global.css';
 import { queryClient, asyncStoragePersister } from '../api/queryClient';
@@ -31,6 +34,7 @@ export default function RootLayout() {
         maxAge: 1000 * 60 * 60 * 24, // 24 hours cache retention
       }}
     >
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
       <AnimatedSplashOverlay />
       <Stack
         screenOptions={{
@@ -48,7 +52,15 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="task/[id]" options={{ title: 'Task Details', headerBackTitle: 'Back' }} />
+        <Stack.Screen
+          name="task/[id]"
+          options={{
+            title: 'Task Details',
+            headerBackTitle: 'Back',
+            animation: 'slide_from_right',
+            gestureEnabled: true,
+          }}
+        />
       </Stack>
     </PersistQueryClientProvider>
   );
