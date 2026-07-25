@@ -2,7 +2,8 @@
 
 This repository contains a clean, production-ready implementation of a **Task Manager Mobile Application** built using Expo SDK 57, TypeScript, Supabase, TanStack Query v5, Zustand, AsyncStorage, and React Hook Form. It acts as a reference solution and a technical assessment task for evaluating React Native developers.
 
----
+
+## App Link: https://expo.dev/accounts/sopnilswapon1/projects/shareviral-task-assessment/builds/b66ca511-1fe5-4cc8-8d8c-3c9702daf6dc
 
 ## ⚡ Setup & Installation
 
